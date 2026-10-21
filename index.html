@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Öffne wenn du</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: Startscreen mit Umschlag und Herzen, darunter eine schlichte linksbündige Seite mit drei Briefen und dem Playlist-Button. Hellrosa, Weiß, etwas Hellblau. */
+:root {
+  --bg: #fde9f0;
+  --pink: #f4a9c3;
+  --pink-light: #f9cfdf;
+  --pink-deep: #e0709c;
+  --blue: #b9dcf5;
+  --blue-deep: #4f9ad6;
+  --white: #ffffff;
+  --text: #2e2a3b;
+  --text-soft: #6a6478;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--blue-deep); outline-offset: 3px; }
+
+/* ---------- Startscreen ---------- */
+.stage {
+  position: fixed; inset: 0; z-index: 20;
+  display: grid; place-items: center;
+  background: var(--bg);
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+  transition: opacity .7s ease, visibility .7s;
+}
+.stage.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+.hearts { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.heart {
+  position: absolute; bottom: -60px; line-height: 1; opacity: 0;
+  animation: rise linear forwards; will-change: transform, opacity;
+}
+@keyframes rise {
+  0% { transform: translate(0, 0) rotate(-8deg); opacity: 0; }
+  12% { opacity: .85; }
+  50% { transform: translate(var(--sway), -55vh) rotate(8deg); }
+  100% { transform: translate(calc(var(--sway) * -1), -120vh) rotate(-6deg); opacity: 0; }
+}
+.intro { position: relative; z-index: 2; display: grid; justify-items: center; gap: 30px; text-align: center; }
+.intro h1 { margin: 0; font-size: clamp(1.8rem, 7vw, 2.6rem); font-weight: 700; line-height: 1.2; text-wrap: balance; }
+.intro .name { margin: 0; font-size: 1.4rem; font-weight: 600; color: var(--pink-deep); }
+
+.envelope {
+  position: relative; width: min(84vw, 340px); aspect-ratio: 3 / 2;
+  border: 0; background: none; padding: 0;
+}
+.envelope .back { position: absolute; inset: 0; background: var(--pink-deep); }
+.envelope .paper {
+  position: absolute; left: 7%; right: 7%; top: 8%; height: 86%;
+  background: var(--white); z-index: 1;
+  transition: transform .9s ease .5s;
+}
+.envelope .pocket {
+  position: absolute; inset: 0; z-index: 2;
+  background: var(--pink);
+  clip-path: polygon(0 0, 50% 58%, 100% 0, 100% 100%, 0 100%);
+}
+.envelope .flap {
+  position: absolute; left: 0; right: 0; top: 0; height: 58%; z-index: 3;
+  background: var(--pink-light);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: top center; transition: transform .7s ease;
+}
+.envelope .seal {
+  position: absolute; left: 50%; top: 53%; z-index: 4;
+  width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+  background: var(--blue-deep); color: var(--white);
+  display: grid; place-items: center; font-size: 1.1rem;
+  transition: opacity .3s;
+}
+.envelope.open .flap { transform: rotateX(180deg); }
+.envelope.open .flap.behind { z-index: 0; }
+.envelope.open .paper { transform: translateY(-62%); }
+.envelope.open .seal { opacity: 0; }
+
+/* ---------- Hauptseite ---------- */
+main { max-width: 600px; margin: 0 auto; padding-block: max(40px, env(safe-area-inset-top, 0px)) max(56px, env(safe-area-inset-bottom, 0px)); }
+.top .small { margin: 0 0 6px; color: var(--text-soft); }
+.top h2 { margin: 0 0 14px; font-size: 1.9rem; line-height: 1.2; text-wrap: balance; }
+.top p { margin: 0; color: var(--text); text-wrap: pretty; }
+.label { margin: 36px 0 12px; font-size: 1.15rem; font-weight: 700; }
+
+.list { display: grid; gap: 10px; }
+.card {
+  min-width: 0; width: 100%;
+  background: var(--white); border: 1px solid var(--blue); border-radius: 6px;
+  padding: 14px 16px; text-align: left; font-size: 1.05rem;
+}
+.card:hover { border-color: var(--pink-deep); background: #fffafc; }
+
+.music { margin-top: 40px; }
+.music p { margin: 0 0 12px; }
+.spotify {
+  display: inline-block;
+  background: #1db954; color: #fff; font-weight: 700;
+  padding: 11px 22px; border-radius: 6px; text-decoration: none;
+}
+.spotify:hover { background: #17a34a; }
+.spotify + .spotify { margin-left: 8px; }
+
+/* ---------- Brief ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
+  background: rgba(60, 45, 80, .45);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.letter {
+  position: relative; width: min(100%, 460px); max-height: 100%; overflow-y: auto;
+  background: var(--white); border-radius: 8px; padding: 28px 24px 22px;
+}
+.letter .kicker { margin: 0; font-size: .9rem; color: var(--blue-deep); }
+.letter h3 { margin: 2px 0 14px; font-size: 1.4rem; line-height: 1.25; text-wrap: balance; padding-right: 28px; }
+.letter .body p { margin: 0 0 .8em; font-size: 1.08rem; }
+.letter .sign { margin-top: 10px; font-weight: 700; color: var(--pink-deep); }
+.reasons { margin: 0 0 16px; padding-left: 1.4em; display: grid; gap: 10px; font-size: 1.08rem; }
+.reasons li::marker { color: var(--pink-deep); font-weight: 700; }
+.clip { color: var(--blue-deep); font-weight: 600; white-space: nowrap; }
+.letter h3 s { color: var(--text-soft); }
+.pw-label { display: block; margin-bottom: 8px; color: var(--text-soft); }
+.pw-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.pw {
+  flex: 1; min-width: 0; font: inherit; font-size: 1.1rem; letter-spacing: .2em;
+  padding: 9px 12px; border: 1px solid var(--blue); border-radius: 6px; background: var(--white); color: var(--text);
+}
+.pw-error { margin-top: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: #c0305f; }
+.tip {
+  min-width: 64px; padding: 6px 14px; border: 1px solid var(--blue); border-radius: 6px;
+  background: var(--white); color: var(--text); font-weight: 700; letter-spacing: .05em;
+}
+.tip:hover { border-color: var(--blue-deep); }
+.letter .long { padding-top: 14px; }
+.letter .long p { font-size: 1.02rem; line-height: 1.6; margin: 0 0 1em; }
+.name-line {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px;
+  font-size: 1.3rem; font-weight: 700; color: var(--pink-deep);
+}
+.swap {
+  width: 38px; height: 38px; padding: 0; border: 1px solid var(--blue); border-radius: 50%;
+  background: var(--white); font-size: 1.1rem; line-height: 1;
+}
+.swap:hover { border-color: var(--blue-deep); }
+.overlay.alert { z-index: 40; }
+.letter.oops { text-align: center; max-width: 380px; border-top-color: #d6335f; display: grid; gap: 16px; justify-items: center; }
+.letter.oops p { margin: 0; font-size: 1.3rem; font-weight: 700; color: #b0224a; text-wrap: balance; }
+.bubble {
+  position: fixed; z-index: 10;
+  right: max(8px, env(safe-area-inset-right, 0px)); bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  width: 38px; height: 32px; padding: 0; font-size: 1rem; line-height: 1;
+  background: var(--white); border: 1px solid var(--blue); border-radius: 12px;
+  opacity: .5; transition: opacity .2s;
+}
+.bubble::after {
+  content: ""; position: absolute; right: 7px; bottom: -6px;
+  border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 7px solid var(--blue);
+}
+.bubble:hover, .bubble:focus-visible { opacity: 1; }
+.plus-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.plus {
+  width: 48px; height: 48px; border-radius: 50%; border: 0;
+  background: var(--pink-deep); color: var(--white); font-size: 1.8rem; line-height: 1;
+}
+.plus:hover:not(:disabled) { background: #d25a8a; }
+.plus:disabled { background: var(--pink-light); cursor: default; }
+.count { color: var(--text-soft); font-size: .95rem; min-width: 0; }
+.reveal {
+  border: 0; background: var(--blue); color: var(--text);
+  padding: 8px 16px; border-radius: 6px;
+}
+.reveal:hover { background: #a2cdee; }
+.close {
+  position: absolute; top: 8px; right: 8px; width: 36px; height: 36px;
+  border: 0; background: none; color: var(--text-soft); font-size: 1.2rem;
+}
+.close:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .heart { animation: none; opacity: .5; }
+  .envelope .paper, .envelope .flap, .stage { transition-duration: .01s; transition-delay: 0s; }
+}
+
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+</style>
+</head>
+<body>
+
+
+<section class="stage" id="stage" aria-label="Startseite">
+  <div class="hearts" id="hearts" aria-hidden="true"></div>
+  <div class="intro">
+    <h1>Für dich, mein Baby</h1>
+    <button class="envelope" id="envelope" type="button" aria-label="Umschlag öffnen">
+      <span class="back"></span>
+      <span class="paper"></span>
+      <span class="pocket"></span>
+      <span class="flap" id="flap"></span>
+      <span class="seal" aria-hidden="true">♥</span>
+    </button>
+    <p class="name">Kubi</p>
+  </div>
+</section>
+
+<main id="main">
+  <header class="top">
+    <p class="small">Für das wunderschönste Mädchen auf Erden</p>
+    <h2>Alles Gute zum Geburtstag mein Herz</h2>
+    <p>Ich liebe dich so unfassbar sehr Daliah, ich hoffe meine Geschenke verbessern deinen Geburtstag und machen dich glücklich. Du verdienst das Beste auf der Welt, Baby.</p>
+  </header>
+
+  <h3 class="label">Öffne wenn du</h3>
+  <div class="list" id="list"></div>
+
+  <h3 class="label">Wieso ich mein Baby liebe</h3>
+  <button class="card" id="why-open" type="button">Klick mich</button>
+
+  <button class="bubble" id="secret-open" type="button" aria-label="Geheimes Fenster öffnen">🤫</button>
+
+  <div class="music">
+    <p>Achte lieber auf die Titel, die Songs sind chopped.</p>
+    <a class="spotify" href="https://open.spotify.com/playlist/7wxP9jqlHTQLPV0vW3Mqu0?si=d0039aece70b4a0e&pt=6a5d0c15ca17ef4e2aa1a0f2b47557df" target="_blank" rel="noopener noreferrer">Playlist</a>  </div>
+</main>
+
+<div class="overlay" id="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="l-title">
+  <article class="letter">
+    <button class="close" id="close" type="button" aria-label="Brief schließen">✕</button>
+    <p class="kicker">Öffne wenn du</p>
+    <h3 id="l-title"></h3>
+    <div class="body" id="l-body"></div>
+  </article>
+</div>
+
+<div class="overlay" id="why" hidden role="dialog" aria-modal="true" aria-labelledby="why-title">
+  <article class="letter">
+    <button class="close" id="why-close" type="button" aria-label="Schließen">✕</button>
+    <h3 id="why-title"><s>100</s> 33 Gründe wieso ich dich liebe</h3>
+    <ol class="reasons" id="reasons"></ol>
+    <div class="plus-row">
+      <button class="plus" id="plus" type="button" aria-label="Nächsten Grund aufdecken">+</button>
+      <span class="count" id="count"></span>
+    </div>
+  </article>
+</div>
+
+<div class="overlay" id="secret" hidden role="dialog" aria-modal="true" aria-label="Passwort eingeben">
+  <article class="letter">
+    <button class="close" id="secret-close" type="button" aria-label="Schließen">✕</button>
+    <form id="secret-form" autocomplete="off">
+      <div class="pw-row">
+        <input id="pw" class="pw" type="password" inputmode="numeric" autocomplete="off" placeholder="Passwort eingeben" aria-label="Passwort eingeben">
+        <button class="reveal" type="submit">OK</button>
+      </div>
+      <div class="pw-error" id="pw-error" hidden>
+        <span>Falsch. Willst du nen Tipp?</span>
+        <button class="tip" id="tip" type="button">Tipp</button>
+      </div>
+    </form>
+    <div class="body long" id="secret-body" hidden>
+      <p>Der Text wird nicht viel anders als der vorherige sein, weil sich ehrlicherweise nicht viel geändert hat außer die Größe meiner Liebe für dich. Du bist in diesen 6 Monaten so sehr an mich rangewachsen, ich weiß gar nicht wie oder warum, aber ich beschwere mich nicht. Du bist wahrscheinlich das Beste, was mir jemals passiert ist in meinem ganzen Leben, weil du mir gezeigt hast, was Liebe wirklich bedeutet. Ich wurde natürlich schon von meiner Familie geliebt, aber ich hatte denen gegenüber nicht dieses Gefühl, was ich für dich habe. Es ist mäßig wie ein bester Freund vs. ein Bruder, wenn du verstehst.</p>
+      <p>Meine Gründe hast du ja bestimmt schon gelesen, bevor du das hier liest, denke ich mal? Du wirst ehrlicherweise nicht auf das Passwort kommen ohne meine Hilfe, falls das passiert, hab ich es gerade eben hier um 23:23 verewigt. Ich wünschte, ich könnte mehr sagen als nur Ich liebe dich. Um meine Liebe akkurat für dich zu verfassen, müsste ich ganze Novellen schreiben, aber wir wissen beide, du liest nicht gerne. Deswegen versuche ich das hier auch relativ kurz zu halten, aber trotzdem meine Gedanken hier reinzuschreiben.</p>
+      <p>Ich denke gerade sehr oft an deine Nähe. Manchmal wünschte ich, ich könnte mich mit Heißkleber an dich festkleben, sodass es dolle wehtut, wenn du mich entfernen musst. War das komisch? Ich finde nicht, ich fand das sehr romantisch und poetisch meinerseits. Leider muss ich dich mit anderen Personen teilen, was völlig okay ist, weil du meine Aufmerksamkeit oder Nähe ja auch mit sehr vielen Leuten teilen musst, unter anderem sehr vielen Frauen, weshalb ich keinen Grund zu meckern habe.. Wenigstens hab ich dich für die Nacht. Nachts zu callen ist immer so schön mit dir, aber es killt unsere beiden Schlafrhythmen. Wir müssten eigentlich um 19 ins Bett, damit wir pünktlich um 21 einschlafen können, weil einer von uns zu viel redet nachts, aber der Schlaf kann nicht wichtiger als du sein.</p>
+      <p>Du bist meine erste, oberste Priorität und das wird sich auch nie ändern, egal was ich sage. Du wirst immer in meinem Fokus liegen. Vielleicht werde ich auf mich achten, mich pflegen, aber du wirst trotzdem auf derselben Stelle bleiben, teilweise tue ich es auch für dich, weil ich deine hohen Standards erfüllen möchte. Niemals werde ich dich vernachlässigen, wenn das passiert, bin ich tot oder liege im Koma.</p>
+      <p>Wir schreiben ja auch viel, und ehrlicherweise ist es irgendwo auch besser, dass wir nicht mehr spielen, weil mein größter Traum ist, nicht mehr abhängig vom Zocken zu sein. Ich habe, seit ich denken kann, schon eine Konsole in der Hand gehabt. Es hat früher mit Lego angefangen, dann durfte ich irgendwann mit der PS4 meines Vaters spielen, wo er mir Fortnite gezeigt hat. Eigentlich wollte ich nur irgendwelche Ballerspiele spielen, sowas wie Cod (Juckt dich das hier überhaupt? Ist mir eigentlich auch relativ egal, weil ich gerade einfach nur meine Gedanken ausschreibe, was ich übrigens oft mache, aber nicht in irgendwelchen leeren Files, sondern meist zu KI). Dann habe ich angefangen, sehr, SEHR viel Fortnite zu spielen, ich glaube bis 12, wo ich meinen ersten PC bekommen habe, also 4 Jahre Fortnite gespielt.</p>
+      <p>Es war noch okay, also die Dauer vom Spielen, weil ich immer sehr früh ausmachen musste, weil meine Eltern eine Kochshow schauen wollten, aber seitdem ich dann die PS4 geschenkt bekommen habe und einen eigenen Fernseher, konnte ich praktisch nicht mehr aufhören. Ich hatte früher auch, glaube ich, Aggressionsprobleme, weil ich immer sehr schnell wütend wurde, im Spiel und auch in echt. Es hat sich verbessert, nachdem meine Mutter mich darauf angesprochen hat und meinte, sie bekommt davon PTSD, weil ihr Bruder früher gewalttätig war. Seitdem habe ich aufgehört, und manchmal, wenn ich sehr sauer bin, kommt es raus. Aber mittlerweile gar nicht mehr, WENN ich alleine bin, was 70 % der Zeit so ist.</p>
+      <p>Mich hat es nicht groß beeinflusst, aber mittlerweile merke ich, wie es mein Leben zerstört, ich werde faul und verschwende allgemein meine Zeit. In letzter Zeit verändert sich das aber. Ich habe aktuell 0 Interesse zu spielen, sofern es alleine ist. Es macht auch einfach keinen Spaß und ist dumm, alleine rumzusitzen und zu spielen, wo ist der Sinn, das ist in meinen Augen irgendwie sehr deprimierend. Ich habe früher Gym, Sport und sowas als Zeitverschwendung gesehen, was irgendwo auch richtig ist, weil wir eh alle irgendwann verrecken. Aber lieber was aus seinem Leben machen und stark abtreten, statt wie ein gammliger DC-Mod zu gehen. Ich merke gerade, dass der Text mehr um mich geht statt um dich, was ich mit diesem Text eigentlich bewirken wollte.</p>
+      <p>Es gibt leider nicht wirklich viel zu sagen, weil das Offensichtliche schon gesagt wurde, und außerdem schreiben wir uns ja oft genug, dass wir uns lieben, und wir machen auch oft genug Dinge, die das bestätigen.. Ich liebe dich so sehr Daliah, du bist mein Safespace, ich kann alles tun bei dir, so sein, wie ich will, und dich juckt es kaum. Ich fühle mich so wohl bei dir wie so ein Vogel in dem Nest bei seiner Mutter, so komfortabel fühle ich mich bei dir. Ich habe langsam auch das Gefühl, dass wir gegenseitig gleich viel attached sind, auch wenn ich es viel mehr zeige, aber du sagst mir ja auch, dass du mich liebst, viel, doll, sehr und mehr, sowas, deswegen bin ich fest davon überzeugt, dass es diesmal nicht einseitig ist. Was es sonst meistens bei mir war, also dass ich meinen Freund halt mehr gemocht habe, als er/sie mich. Ich fühle mich wirklich wie der Nutteneboy, wie ich dir das hier alles schreibe, aber ich muss sein HS-Geschenk überbieten leider. Ich hoffe, das alles + das Paket annihilieren sein scheiß Geschenk und ich geschenkmoggiere ihn.</p>
+      <div class="name-line">
+        <span>Ich liebe dich <span id="name-word">Daliah</span></span>
+        <button class="swap" id="name-btn" type="button" aria-label="Nächsten Namen anzeigen">🔄</button>
+      </div>
+    </div>
+  </article>
+</div>
+
+<div class="overlay alert" id="oops" hidden role="alertdialog" aria-modal="true" aria-labelledby="oops-text">
+  <article class="letter oops">
+    <p id="oops-text">Sag 5 mal dass du dein Baby liebst</p>
+    <button class="reveal" id="oops-ok" type="button">OK</button>
+  </article>
+</div>
+
+<script>
+(function () {
+  var letters = [
+    { t: "traurig bist", p: [
+      "Ich habe immer ein offenes Ohr für dich, wenn du reden willst. Deine Probleme sind auch meine Baby. Selbst dem Goat geht es mal schlecht."
+    ]},
+    { t: "deinen Lover vermisst, haha", p: [
+      "Wieso vermissen, ich bin immer da für dich. Ruf mich an und ich bin da, schreib mich an und ich bin da. Ich werde für immer bei dir sein Baby. Du bist meine oberste Priorität. MWAH"
+    ]},
+    { t: "lachen willst", p: [
+      "Was macht ein Pilz, wenn ihm langweilig ist?"
+    ], answer: "Er schaut die Champions League." }
+  ];
+
+  var list = document.getElementById("list");
+  letters.forEach(function (l, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "card"; b.textContent = l.t;
+    b.addEventListener("click", function () { openLetter(i, b); });
+    list.appendChild(b);
+  });
+
+  var overlay = document.getElementById("overlay"), lastFocus = null;
+  function openLetter(i, from) {
+    var l = letters[i];
+    lastFocus = from;
+    document.getElementById("l-title").textContent = l.t;
+    var body = document.getElementById("l-body");
+    body.textContent = "";
+    l.p.forEach(function (t) { var p = document.createElement("p"); p.textContent = t; body.appendChild(p); });
+    if (l.answer) {
+      var ans = document.createElement("p");
+      ans.hidden = true; ans.textContent = l.answer; ans.style.fontWeight = "700";
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.className = "reveal"; btn.textContent = "Auflösung";
+      btn.addEventListener("click", function () { ans.hidden = false; btn.hidden = true; });
+      body.appendChild(btn); body.appendChild(ans);
+    }
+    overlay.hidden = false;
+    document.getElementById("close").focus();
+  }
+  function closeLetter() { overlay.hidden = true; if (lastFocus) lastFocus.focus(); }
+  document.getElementById("close").addEventListener("click", closeLetter);
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) closeLetter(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !overlay.hidden) closeLetter(); });
+
+  /* Gründe */
+  var reasons = [
+    "Dein Lachen",
+    "Deine Stimme",
+    "Wie du mit mir umgehst",
+    "Dein Praise",
+    "Deine Interessen",
+    "Dein ultra krasses Val Aim",
+    "Dass du, du selbst sein kannst bei mir",
+    "Dein Humor",
+    { text: "Dein Englisch", link: "https://medal.tv/games/geometry-dash/clips/nL4SVIRNT5BnkUC6T?invite=cr-MSxTVU0sNDY4MzI1ODg2" },
+    "Weil du kommunizierst, statt mich bei Streit zu ignorieren",
+    "Du bist da für mich, wenn es mir schlecht geht",
+    "Du verbesserst meine Laune sehr schnell",
+    "Dass wir in Ruhe sitzen können ohne zu reden und es nicht unangenehm wird",
+    "Dein wunderschönes Gesicht",
+    "Deine Ehrlichkeit",
+    "Dass du auch mal meine Seite verstehst",
+    "Weil mit dir alles Spaß macht",
+    "Weil ich bei dir so sein kann, wie ich will, und es dich nicht juckt",
+    "Weil dir meine Gefühle auch wichtig sind",
+    "Weil du mir verzeihst, auch wenn ich Kacke gebaut habe",
+    "Weil du mich manchmal aus meiner Komfortzone holst",
+    "Deine süßen Nachrichten",
+    "Ich kann dir blind vertrauen",
+    "Dass du so viel Zeit mit mir verbringst, obwohl ich sehr anstrengend bin",
+    "Deine Geduld",
+    "Deine Liebe",
+    "Deine Berühmtheit bei Frauen",
+    "Dass wir uns immer wieder vertragen",
+    "Deine schönen grünen Augen",
+    "Deine schläfrige Stimme",
+    "Deine Küsse",
+    "Dein majestätisches Haar",
+    "Dich. Du, Daliah, mein Baby, mein gutes Mädchen"
+  ];
+  var why = document.getElementById("why"), reasonList = document.getElementById("reasons"),
+      plus = document.getElementById("plus"), count = document.getElementById("count"), shown = 0;
+  function updateCount() {
+    count.textContent = shown + " von " + reasons.length;
+    if (shown >= reasons.length) { plus.disabled = true; count.textContent = "Sorry, mir ist während ich das gecoded habe nichts mehr eingefallen X_X"; }
+  }
+  plus.addEventListener("click", function () {
+    if (shown >= reasons.length) return;
+    var li = document.createElement("li");
+    var r = reasons[shown];
+    if (typeof r === "string") {
+      li.textContent = r;
+    } else {
+      li.appendChild(document.createTextNode(r.text + " "));
+      var a = document.createElement("a");
+      a.href = r.link; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.className = "clip"; a.textContent = "Clip ansehen";
+      li.appendChild(a);
+    }
+    reasonList.appendChild(li);
+    shown++;
+    updateCount();
+    li.scrollIntoView({ block: "nearest" });
+  });
+  updateCount();
+  document.getElementById("why-open").addEventListener("click", function () { why.hidden = false; plus.focus(); });
+  function closeWhy() { why.hidden = true; document.getElementById("why-open").focus(); }
+  document.getElementById("why-close").addEventListener("click", closeWhy);
+  why.addEventListener("click", function (e) { if (e.target === why) closeWhy(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !why.hidden) closeWhy(); });
+
+  /* Geheimer Brief */
+  var secret = document.getElementById("secret"), pwForm = document.getElementById("secret-form"),
+      pw = document.getElementById("pw"), pwError = document.getElementById("pw-error"),
+      secretBody = document.getElementById("secret-body");
+  document.getElementById("secret-open").addEventListener("click", function () { secret.hidden = false; pw.focus(); });
+  pwForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (pw.value.trim() === "143") {
+      pwForm.hidden = true; secretBody.hidden = false; pwError.hidden = true;
+      secret.querySelector(".letter").scrollTop = 0;
+    } else {
+      pwError.hidden = false; pw.select();
+      fails++;
+      if (fails >= 3) { fails = 0; buzz(); oops.hidden = false; oopsOk.focus(); }
+    }
+  });
+  var fails = 0, oops = document.getElementById("oops"), oopsOk = document.getElementById("oops-ok");
+  function closeOops() { oops.hidden = true; pw.focus(); }
+  oopsOk.addEventListener("click", closeOops);
+  oops.addEventListener("click", function (e) { if (e.target === oops) closeOops(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !oops.hidden) closeOops(); });
+  function buzz() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      var ctx = new AC(), t = ctx.currentTime, g = ctx.createGain();
+      g.gain.setValueAtTime(0.4, t);
+      g.gain.setValueAtTime(0.4, t + 0.65);
+      g.gain.linearRampToValueAtTime(0.0001, t + 0.75);
+      g.connect(ctx.destination);
+      [[125, "sawtooth"], [133, "square"]].forEach(function (p) {
+        var o = ctx.createOscillator();
+        o.type = p[1]; o.frequency.value = p[0];
+        o.connect(g); o.start(t); o.stop(t + 0.8);
+      });
+    } catch (err) {}
+  }
+  var tip = document.getElementById("tip");
+  tip.addEventListener("click", function () { tip.textContent = "ADC"; });
+  var names = ["Daliah", "Baby", "mein Herz", "mein gutes Mädchen", "Babe", "Honey", "mein süßes Mädchen", "mein Puppy", "Dali", "St4rlight", "mein Ein und Alles", "meine Liebe", "meine FREUNDINNNJHGJGJGHGH"], nameIdx = 0, nameWord = document.getElementById("name-word");
+  document.getElementById("name-btn").addEventListener("click", function () {
+    nameIdx = (nameIdx + 1) % names.length;
+    nameWord.textContent = names[nameIdx];
+  });
+  function closeSecret() {
+    secret.hidden = true; pwForm.hidden = false; secretBody.hidden = true; pwError.hidden = true; pw.value = "";
+    tip.textContent = "Tipp";
+    nameIdx = 0; nameWord.textContent = names[0];
+    document.getElementById("secret-open").focus();
+  }
+  document.getElementById("secret-close").addEventListener("click", closeSecret);
+  secret.addEventListener("click", function (e) { if (e.target === secret) closeSecret(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !secret.hidden) closeSecret(); });
+
+  /* Herzen */
+  var hearts = document.getElementById("hearts");
+  var colors = ["#f4a9c3", "#e0709c", "#f9cfdf", "#b9dcf5", "#ffffff", "#ff9ec0"];
+  function spawn() {
+    var h = document.createElement("span");
+    h.className = "heart"; h.textContent = "♥";
+    var size = 14 + Math.random() * 30, dur = 6 + Math.random() * 6;
+    h.style.left = (Math.random() * 100) + "%";
+    h.style.fontSize = size + "px";
+    h.style.color = colors[Math.floor(Math.random() * colors.length)];
+    h.style.setProperty("--sway", (Math.random() * 70 - 35) + "px");
+    h.style.animationDuration = dur + "s";
+    hearts.appendChild(h);
+    setTimeout(function () { h.remove(); }, dur * 1000 + 200);
+  }
+  for (var k = 0; k < 10; k++) setTimeout(spawn, k * 250);
+  var timer = setInterval(spawn, 450);
+
+  /* Umschlag */
+  var env = document.getElementById("envelope"), stage = document.getElementById("stage"), opened = false;
+  env.addEventListener("click", function () {
+    if (opened) return;
+    opened = true;
+    env.classList.add("open");
+    env.setAttribute("aria-label", "Umschlag ist offen");
+    setTimeout(function () { document.getElementById("flap").classList.add("behind"); }, 350);
+    setTimeout(function () {
+      stage.classList.add("gone");
+      clearInterval(timer);
+      window.scrollTo(0, 0);
+    }, 2000);
+  });
+})();
+</script>
+
+</body>
+</html>
